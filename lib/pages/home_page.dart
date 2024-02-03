@@ -5,6 +5,8 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import 'dart:ui' as ui;
 
+import 'package:location/location.dart';
+
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
 
@@ -16,6 +18,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   GoogleMapController? googleMapController;
+  Location myLocation = Location();
   Set<Marker> myMarkers = {};
   Set<Circle> myCircles = {};
   Set<Polygon> myPolygons = {};
@@ -24,7 +27,8 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
-    setAndChangeMarkerFun();
+    setAndChangeMarkerFun(latLng: AppAssets.myLocation, image: AppAssets.homeMarker);
+    getPermissionAndLocation();
   }
 
   @override
@@ -100,10 +104,10 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   /// TODO: change map default marker
-  void setAndChangeMarkerFun() async {
+  void setAndChangeMarkerFun({required LatLng latLng, required String image}) async {
     ///TODO: with change Size
     final myMarkerIcon = BitmapDescriptor.fromBytes(
-      await changeMarkerSizeFun(markerImage: AppAssets.homeMarker, size: 120),
+      await changeMarkerSizeFun(markerImage: image, size: 120),
     );
 
     ///TODO: without change Size
@@ -112,9 +116,9 @@ class _MyHomePageState extends State<MyHomePage> {
     //   AppAssets.homeMarker,
     // );
     final marker = Marker(
+      position: latLng,
       icon: myMarkerIcon,
-      position: AppAssets.myLocation,
-      markerId: const MarkerId('myMarker'),
+      markerId:  MarkerId(image),
       infoWindow: const InfoWindow(title: 'this is my location'),
     );
     myMarkers.add(marker);
@@ -136,5 +140,66 @@ class _MyHomePageState extends State<MyHomePage> {
     final finalImage = imageByteData!.buffer.asUint8List();
 
     return finalImage;
+  }
+
+  /// TODO: check Location Service
+  Future<void> checkLocationServiceFun() async {
+    bool isServiceEnabled = await myLocation.serviceEnabled();
+    if (!isServiceEnabled) {
+      isServiceEnabled = await myLocation.requestService();
+      if (!isServiceEnabled) {
+        ///TODO: user deny request
+        /// show error bar
+      }
+    }
+  }
+
+  /// TODO: check Location permission
+  Future<bool> checkLocationPermissionFun() async {
+    PermissionStatus myPermissionStatus = await myLocation.hasPermission();
+    if (myPermissionStatus == PermissionStatus.deniedForever) {
+      return false;
+    }
+    if (myPermissionStatus == PermissionStatus.denied) {
+      myPermissionStatus = await myLocation.requestPermission();
+      if (myPermissionStatus != PermissionStatus.granted) {
+        ///TODO: user deny Permission
+        /// show error bar
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /// TODO: get location data and change camera position
+  void getLocationData() {
+    ///TODO: stream my location and change it
+
+    myLocation.changeSettings(distanceFilter: 2);
+    myLocation.onLocationChanged.listen(
+      (locationData) {
+        final camPosition = CameraPosition(
+          zoom: 15,
+          target: LatLng(locationData.latitude ?? 0.0, locationData.longitude ?? 0.0),
+        );
+        setAndChangeMarkerFun(
+          latLng: LatLng(locationData.latitude ?? 0.0, locationData.longitude ?? 0.0),
+          image: AppAssets.trainingMarker,
+        );
+        setState(() {});
+        googleMapController?.animateCamera(CameraUpdate.newCameraPosition(camPosition));
+      },
+    );
+  }
+
+  void getPermissionAndLocation() async {
+    await checkLocationServiceFun();
+    bool hasPermission = await checkLocationPermissionFun();
+    if (hasPermission) {
+      getLocationData();
+    } else {
+      ///TODO: user deny
+      /// show error bar
+    }
   }
 }
