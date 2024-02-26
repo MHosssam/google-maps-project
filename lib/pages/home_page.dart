@@ -174,7 +174,7 @@ class _MyHomePageState extends State<MyHomePage> {
   /// TODO: get location data and change camera position
   void getLocationData() {
     ///TODO: stream my location and change it
-
+    // live tracking
     myLocation.changeSettings(distanceFilter: 2);
     myLocation.onLocationChanged.listen(
       (locationData) {
